@@ -1,0 +1,46 @@
+# Docker
+# Build a Docker image
+# https://docs.microsoft.com/azure/devops/pipelines/languages/docker
+
+trigger:
+  - master
+
+resources:
+  - repo: self
+
+variables:
+  buildConfiguration: 'Release'
+  dockerRegistryServiceConnection: 'innov-bs'
+  imageName-yooz-integration-monitoring: 'innovbs/yooz-integration-monitoring'
+
+
+stages:
+  - stage: Build
+    displayName: Build image
+    jobs:
+      - job: Build
+        displayName: Build
+        pool:
+          vmImage: ubuntu-latest
+        steps:
+          - powershell: |
+              $tag = Get-Date -Format "yyyyMMdd-HHmmss"
+              Write-Host "##vso[task.setvariable variable=tag]$tag"
+            name: GenerateTag
+
+          - task: Docker@2
+            displayName: Build an image
+            inputs:
+              command: build
+              repository: '$(imageName-yooz-integration-monitoring)'
+              dockerfile: '$(Build.SourcesDirectory)/Dockerfile'
+              tags: |
+                $(tag)
+
+          - task: Docker@2
+            inputs:
+              command: 'push'
+              containerRegistry: '$(dockerRegistryServiceConnection)'
+              repository: '$(imageName-yooz-integration-monitoring)'
+              tags: '$(tag)'
+            displayName: 'Push Docker Image Yooz to Docker Hub'

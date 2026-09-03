@@ -1,0 +1,65 @@
+version: "3.8"
+
+networks:
+  yooznwk:
+    name: yooznwk
+    driver: bridge
+  elastic:
+    name: elastic
+    external: false
+
+services:
+  yooz:
+    image: ${DOCKER_REGISTRY-}yooz
+    container_name: yooz
+    build:
+      context: .
+      dockerfile: Dockerfile
+      args:
+        NEXT_PUBLIC_API_URL: http://localhost:3050/api/
+    env_file:
+      - .env.production
+    depends_on:
+      mongodb:
+        condition: service_healthy
+    ports:
+      - "3050:3050"
+    networks:
+      - yooznwk
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:3050"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+  mongodb:
+    container_name: mongodb
+    image: mongo:latest
+    restart: always
+    command:
+      - --storageEngine
+      - wiredTiger
+      - --auth
+    environment:
+      - MONGO_INITDB_ROOT_USERNAME=yooz
+      - MONGO_INITDB_ROOT_PASSWORD=yooz
+      - MONGO_INITDB_DATABASE=yooz
+    healthcheck:
+      test: ["CMD", "mongosh", "--username", "yooz", "--password", "yooz", "--authenticationDatabase", "admin", "--eval", "db.adminCommand('ping')"]
+      interval: 10s
+      timeout: 5s
+      retries: 3
+    ports:
+      - "27017:27017"
+    volumes:
+      - C:/docker_volumes/YOOZ/MongoDB/mongodb-data:/data/db
+      - C:/docker_volumes/YOOZ/MongoDB/mongodb-log:/var/log/mongodb
+      - C:/docker_volumes/YOOZ/MongoDB/db/mongo-init.js:/docker-entrypoint-initdb.d/mongo-init.js
+    networks:
+      - yooznwk
+
+
+
+
+
